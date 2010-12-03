@@ -1,5 +1,5 @@
 ::==============================================================================
-:: PROJECT:	Sonetics DECT Wireless Headset Test
+:: PROJECT:	Sonetics DECT Wireless Generation 1
 ::
 :: DESCRIPTION:	
 :: Load Base Station CVM and PIC with Code and Configure CVM for either EU or US operation
@@ -201,7 +201,6 @@ if %CheckError% NEQ 0 (
 echo The EEPROM Values did not match.
 echo Aborting Process
 echo This unit has NOT been successfully converted
-exit /b
 )
 goto :EOF
 
@@ -224,8 +223,7 @@ echo.
 if %CheckError% NEQ 0 (
 echo The EEPROM Values did not match.
 echo Aborting Process
-echo This unit has NOT been successfully converted to EU
-exit /b
+echo This unit has NOT been successfully converted
 )
 goto :EOF
 
@@ -236,6 +234,7 @@ goto :EOF
 :: Make sure various helper programs that we need are present in this directory
 
 SET FileNotFound=0; 
+call :Exists bs-test3-active.hex
 call :Exists pk2cmd.exe
 call :Exists PK2DeviceFile.dat
 call :Exists fl6.exe
@@ -247,7 +246,7 @@ call :Exists bs_id.txt
 if %FileNotFound% NEQ 0 (
 echo This is a utility file that is needed by this batch file.
 echo Program Aborting
-goto :End
+goto :ENDPROGRAM
 )
 
 :: if %2 is empty, (they didn't tell us if they wanted US or EU) then prompt them
@@ -260,6 +259,7 @@ echo.
 echo To configure as a US Base Station
 echo COMMAND LINE: BaseConvert US Firmware-Filename.hex
 echo.
+ENDLOCAL
 exit /b
 )
 
@@ -344,10 +344,10 @@ if %errorlevel% equ 0 goto :GOODCVM
 ::Woops, we failed to talk to the CVM, let's try one more time
 call :BAUD_FIND
 call :BAUD_19200_STORE
-echo Turn the Headset/Beltpack power switch to OFF.
+echo Remove Power from the BaseStation.
 echo   Hold the 'CVM Programming Dongle' Push Button DOWN 
-echo      then turn BaseStation power switch to ON.
-echo         wait for the PAIR LED to come on
+echo      then return power to BaseStation.
+echo         wait for the PAIR LEDS to come on
 echo            then Release the 'CVM Programming Dongle' Push Button
 PAUSE
 call :DelayMe 2000
@@ -378,15 +378,15 @@ call :PROMPT_POWERCYCLE
 call :BAUD_FIND
 
 :: Check that we wrote the correct values to EEPROM
+SET CheckError=0
 if /I %region% EQU us (
 call :CHECK_EEPROMVARS_US
 ) else (
 call :CHECK_EEPROMVARS_EU
 )
-
-:: ************ BEGIN BS2_EU Section ***************
-:: This is code ported from BS2_EU.BAT
-:BS2 
+if %CheckError% NEQ 0 (
+goto :ABORTPROGRAM
+)
 
 echo.
 echo.
@@ -417,10 +417,12 @@ echo.
 echo Do they match?  Great!  
 PAUSE
 
+
+:: We MUST set the CVM back to 19200, or the PIC won't be able to talk to it!
 call :BAUD_19200_STORE
 
 echo.
-echo Programming Firmware into PIC
+echo Programming %region% Firmware into PIC
 PK2CMD -pPIC18LF45J10 -e -j
 PK2CMD -pPIC18LF45J10 -f%hex_filename% -mP -r -j
 PK2CMD -pPIC18LF45J10 -gP7FF8-7FFD -r -j  
@@ -437,6 +439,7 @@ echo.
 
 
 :ENDPROGRAM
+ENDLOCAL
 exit /b
 
 :ABORTPROGRAM
@@ -444,4 +447,6 @@ echo.
 echo.
 echo There was an error.  This part has NOT been successfully programmed
 echo Program Aborting Now
+ENDLOCAL
 exit /b
+ENDLOCAL

@@ -6,6 +6,7 @@
 ::
 :: COMMAND LINE: BaseConvert EU Firmware-Filename.hex
 :: COMMAND LINE: BaseConvert US Firmware-Filename.hex
+:: COMMAND LINE: BaseConvert 2G4 Firmware-Filename.hex
 ::
 :: RETURN FORMAT: None
 ::
@@ -181,6 +182,36 @@ SENDMAIL /%RTX_COM% 2 3b 8 0 1 81 00 e0
 SENDMAIL /%RTX_COM% 2 3b 8 0 1 f3 00 21
 goto :EOF
 
+
+:SETUP_EEPROMVARS_2G4
+echo Setting EEPROM Defaults for 2.4GHz
+:: Set EE to defaults
+SENDMAIL /%RTX_COM% 2 3a 0
+call :DelayMe 500
+echo Writing EEPROM parameters
+::Set FreqBandOffset
+SENDMAIL /%RTX_COM% 2 3b 8 0 1 36 00 00
+::Set 2.4GHz Fixed Part StartupMode 
+SENDMAIL /%RTX_COM% 2 3b 8 0 1 f3 00 01
+goto :EOF
+
+:CHECK_EEPROMVARS_2G4
+echo Verifying EEPROM Variables for 2.4GHz
+:: Compare the EEPROM Values to what we wrote
+SET CheckError=0
+:: FreqBandOffset 
+call :CHCKEEPROM "2 3c 8 0 01 36 00 ?" 00 
+:: 2.4GHz Fixed Part StartupMode 
+call :CHCKEEPROM "2 3c 8 0 01 F3 00 ?" 01
+echo.
+if %CheckError% NEQ 0 (
+echo The EEPROM Values did not match.
+echo Aborting Process
+echo This unit has NOT been successfully converted
+)
+goto :EOF
+
+
 :CHECK_EEPROMVARS_EU
 echo Verifying EEPROM Variables for EU DECT
 :: Compare the EEPROM Values to what we wrote
@@ -228,6 +259,7 @@ echo This unit has NOT been successfully converted
 goto :EOF
 
 
+
 :: ******** Main Program ************
 :MAIN
 
@@ -259,6 +291,9 @@ echo.
 echo To configure as a US Base Station
 echo COMMAND LINE: BaseConvert US Firmware-Filename.hex
 echo.
+echo To configure as a 2.4GHz Base Station
+echo COMMAND LINE: BaseConvert 2G4 Firmware-Filename.hex
+echo.
 ENDLOCAL
 exit /b
 )
@@ -274,8 +309,12 @@ echo Region: %region%
 if /I %region% EQU eu (
 echo Region: %region%
 ) else (
+if /I %region% EQU 2g4 (
+echo Region: %region%
+) else (
 echo Region %region% not recognized
 goto :ABORTPROGRAM
+)
 )
 )
 
@@ -370,7 +409,11 @@ call :BAUD_FIND
 if /I %region% EQU us (
 call :SETUP_EEPROMVARS_US
 ) else (
+if /I %region% EQU eu (
 call :SETUP_EEPROMVARS_EU
+) else (
+call :SETUP_EEPROMVARS_2G4
+)
 )
 
 :: Prompt the user to cycle power properly to save EEPROM Values
@@ -382,8 +425,13 @@ SET CheckError=0
 if /I %region% EQU us (
 call :CHECK_EEPROMVARS_US
 ) else (
+if /I %region% EQU eu (
 call :CHECK_EEPROMVARS_EU
+) else (
+call :CHECK_EEPROMVARS_2G4
 )
+)
+
 if %CheckError% NEQ 0 (
 goto :ABORTPROGRAM
 )
@@ -400,7 +448,11 @@ echo Setting Basestation ID
 if /I %region% EQU us (
 cvmbsidset
 ) else (
+if /I %region% EQU eu (
 cvmbsidset_eu
+) else (
+cvmbsidset
+)
 )
 
 call :DelayMe 1500

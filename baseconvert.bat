@@ -27,6 +27,9 @@ set rtx_no_acknowledge=1
 set rtx_bps=19200
 set baudrate=19200
 
+:: Base Stations are usually programmed with v0179
+set CVM_FIRMWARE_FILE=pp_onesw_v0179.hex
+:: set CVM_FIRMWARE_FILE=pp_onesw_v0183.hex
 
 goto :MAIN
 
@@ -369,8 +372,8 @@ echo.
 
 PAUSE
 call :DelayMe 2000
-FL6 pp_onesw_v0179.hex
-::FL6 pp_onesw_v0183.hex
+echo Downloading %CVM_FIRMWARE_FILE% into the CVM
+FL6 %CVM_FIRMWARE_FILE%
 :: echo.
 :: echo %ERRORLEVEL%
 :: if %errorlevel% neq 0 goto :ABORTPROGRAM
@@ -390,8 +393,8 @@ echo         wait for the PAIR LEDS to come on
 echo            then Release the 'CVM Programming Dongle' Push Button
 PAUSE
 call :DelayMe 2000
-FL6 pp_onesw_v0179.hex
-::FL6 pp_onesw_v0183.hex
+echo Downloading %CVM_FIRMWARE_FILE% into the CVM
+FL6 %CVM_FIRMWARE_FILE%
 call :BAUD_FIND
 if %errorlevel% neq 0 goto :ABORTPROGRAM
 call :BAUD_19200_STORE

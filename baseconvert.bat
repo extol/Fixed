@@ -34,6 +34,28 @@ set CVM_FIRMWARE_FILE=pp_onesw_v0179.hex
 goto :MAIN
 
 :: ******** Functions ************
+
+
+:LOAD_FILE_INTO_PIC
+:: Loads a hex file into the PIC, without displaying pk2 error to user
+SET hexfilename=%1
+echo.
+echo.
+echo Programming PIC...
+PK2CMD -pPIC18LF45J10 -e -j >NUL
+PK2CMD -pPIC18LF45J10 -f%hexfilename% -mP -r -j >picprog.txt
+find /i "00FFFF" picprog.txt >NUL
+IF %errorlevel% EQU 0 (
+  PK2CMD -pPIC18LF45J10 -gP7FF8-7FFD -r -j >NUL
+) ELSE (
+  echo ERROR:  CAN NOT PROGRAM PIC
+  echo.
+  echo.
+  exit /b 1
+)
+GOTO :EOF
+
+
 :PROMPT_POWERSWITCH_CYCLE
 :: Instruct user to turn off an on power switch, nut not the battery
 echo.
@@ -348,12 +370,13 @@ PAUSE
 :: Erase the PIC so it tristates it's serial output lines and doesn't 
 :: interfere with talking to the CVM.  This eliminates the need to 
 :: short TEST3 to ground.
-PK2CMD -pPIC18LF45J10 -e -j
-PK2CMD -pPIC18LF45J10 -f%bs-test3-active.hex -mP -r -j
-PK2CMD -pPIC18LF45J10 -gP7FF8-7FFD -r -j
-:: echo %ERRORLEVEL%
-:: if %ERRORLEVEL% GTR 0 exit /B
-
+call :LOAD_FILE_INTO_PIC bs-test3-active.hex
+if %ERRORLEVEL% GTR 0 (
+  goto :ABORTPROGRAM
+) ELSE (
+echo Successfully Programmed PIC
+echo.
+)
 
 :: if we're already at 9600, then the 19200 store will work
 :: if we're already at 19200, the 19200 won't work, but it doesn't matter, since we're already 19200!
@@ -478,9 +501,13 @@ call :BAUD_19200_STORE
 
 echo.
 echo Programming %region% Firmware into PIC
-PK2CMD -pPIC18LF45J10 -e -j
-PK2CMD -pPIC18LF45J10 -f%hex_filename% -mP -r -j
-PK2CMD -pPIC18LF45J10 -gP7FF8-7FFD -r -j  
+call :LOAD_FILE_INTO_PIC %hex_filename%
+if %ERRORLEVEL% GTR 0 (
+  goto :ABORTPROGRAM
+) ELSE (
+echo Successfully Programmed PIC
+echo.
+)
   
 echo.
 echo.
